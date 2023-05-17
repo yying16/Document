@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>YY</title>
+    <meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" name="viewport">
+    <link rel="stylesheet" href="../plugins/elementui/index.css">
+    <link rel="stylesheet" href="../plugins/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.staticfile.org/vue/2.2.2/vue.min.js"></script>
+</head>
+<body class="hold-transition">
+<div id="app" >
+    <div class="app-container">
+        <div class="box">
+            <!--使用elementui中的输入框和按钮组件-->
+            <div class="filter-container">
+                <!--通过v-model实现数据双向绑定-->
+                <el-select placeholder="类型" v-model="search.type">
+                    <el-option label="文件名" value="fileName"></el-option>
+                    <el-option label="贡献者" value="contributor"></el-option>
+                    <el-option label="文件类型" value="type"></el-option>
+                </el-select>
+                <el-input placeholder="关键字" v-model="search.content" style="width: 200px;"
+                          class="filter-item"></el-input>
+                <el-button type="primary" round @click="searchFile()">搜索</el-button>
+                <el-button class="butT" @click="openUploadFrame()">上传文件</el-button>
+            </div>
+
+            <el-table size="small" current-row-key="id" :data="dataList" stripe highlight-current-row>
+                <el-table-column prop="fileId" align="center" label="序号" width="120"></el-table-column>
+                <el-table-column prop="fileName" label="文件名" align="center"></el-table-column>
+                <el-table-column prop="contributor" label="贡献者" align="center"></el-table-column>
+                <el-table-column prop="fileType" label="文件类型" align="center" width="100px"></el-table-column>
+                <el-table-column prop="downloadTimes" label="下载次数" align="center" width="120px"></el-table-column>
+                <el-table-column prop="uploadTime" label="上传时间" align="center"></el-table-column>
+                <el-table-column label="操作" align="center">
+                    <template slot-scope="scope">
+                        <el-button type="primary" size="mini" @click="openCheckFrame(scope.row)">查看</el-button>
+                        <el-button type="success" size="mini" @click="downloadFile(scope.row)">下载</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <!--使用elementui中的分页组件-->
+            <div class="pagination-container">
+                <el-pagination
+                        class="pagiantion"
+                        @current-change="handleCurrentChange"
+                        :page-sizes="[5,10,15,20,50,100]"
+                        :page-size="pagination.pageSize"
+                        :total="pagination.total"
+                        layout="total, sizes, prev, pager, next, jumper">
+                </el-pagination>
+            </div>
+            <!-- 对话框 -->
+            <!--“上传文件”对话框-->
+            <div class="add-form">
+                <el-dialog title="上传文件" :visible.sync="dialogFormVisible_upload">
+                    <el-form ref="dataAddForm" :model="formData" :rules="rules" label-position="center" label-width="100px">
+                        <el-row>
+                            <el-col :span="24">
+                                <el-form-item label="贡献者">
+                                    <el-input v-model="contributor"/>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row>
+                            <el-col>
+                                <el-form-item label="备注">
+                                    <el-input v-model="formData.remarks" :autosize="{ minRows: 3, maxRows: 7 }"
+                                              type="textarea"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row type="flex" justify="center" align="middle">
+
+                            <el-upload class="upload-demo" action="#" drag multiple
+                                       :headers="headers"
+                                       :auto-upload="true"
+                                       :limit=1
+                                       :http-request="chooseFile"
+                                       :on-change="handleChange">
+                                <i class="el-icon-upload"></i>
+                                <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+                            </el-upload>
+                        </el-row>
+                    </el-form>
+                    <div slot="footer" class="dialog-footer">
+                        <el-button @click="cancel()">取消</el-button>
+                        <el-button type="primary" @click="confirmUpload()">确定</el-button>
+                    </div>
+                </el-dialog>
+            </div>
+            <!-- “查看”对话框 -->
+            <div class="add-form">
+                <el-dialog title="查看" :visible.sync="dialogFormVisible_check">
+                    <el-form ref="dataEditForm" :model="formData" :rules="rules" label-position="right"
+                             label-width="100px">
+                        <el-row>
+                            <el-col :span="12">
+                                <el-form-item label="文件名:" prop="fileName">
+                                    <el-input disabled="disabled" v-model="formData.fileName"/>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="贡献者" prop="contributor">
+                                    <el-input disabled="disabled" v-model="formData.contributor"/>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row>
+                            <el-col :span="24">
+                                <el-form-item label="备注">
+                                    <el-input disabled="disabled" v-model="formData.remarks" type="textarea"
+                                              :autosize="{ minRows: 5, maxRows: 5 }"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </el-form>
+                    <div slot="footer" class="dialog-footer" align="center">
+                        <el-button type="primary" @click="closeIFrame()">确定</el-button>
+                    </div>
+                </el-dialog>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<!-- 引入组件库 -->
+<script src="../js/vue.js"></script>
+<script src="../plugins/elementui/index.js"></script>
+<script type="text/javascript" src="../js/jquery.min.js"></script>
+<script src="../js/axios-0.18.0.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            username:'未命名',
+            contributor:"",
+            onlineUser:null,                  //在线用户
+            dataList: [],                     //当前页要展示的列表数据
+            dialogFormVisible_upload: false,      //"新增"表单是否可见
+            dialogFormVisible_check: false,     //"查看"表单是否可见
+            formData: {
+                fileId: 1,
+                remarks: "",
+                contributor: "",
+                fileName: ""
+            },//表单数据
+            // rules: {         //表单数据校验规则
+            //     fileName: [{required: true, message: '文件名为必填项', trigger: 'blur'}],
+            //     contributor: [{required: true, message: '贡献者为必填项', trigger: 'blur'}]
+            // },
+            pagination: {         //分页相关模型数据
+                currentPage: 1,   //当前页码
+                pageSize: 10,       //每页显示的记录数
+                total: 0,          //总记录数
+            },
+            search: {            //查找相关数据
+                type: "",
+                content: ""
+            }
+        },
+        //钩子函数，VUE对象初始化完成后自动执行
+        created() {
+            this.InitUserInfo()
+            //调用查询全部数据的操作
+            this.getAllFile();
+        },
+        methods: {
+            //返回所有文件
+            getAllFile() {
+                axios.get("/index/getAllFile/" + this.pagination.currentPage + "/" + this.pagination.pageSize).then((res) => {
+                    this.pagination.currentPage = res.data.current;
+                    this.pagination.total = res.data.total;
+                    this.dataList = res.data.records;
+                });
+            },
+
+
+            //切换页码
+            handleCurrentChange(currentPage) {
+                //修改页码值为当前选中的页码值
+                this.pagination.currentPage = currentPage;
+                //执行查询
+                this.getAllFile();
+            },
+
+            //重置表单
+            resetForm() {
+                this.formData = {
+                    fileId: 0,
+                    remarks: "",
+                    contributor: "",
+                    fileName: ""
+                };
+            },
+
+            //取消
+            cancel() {
+                this.$message.info("当前操作取消");
+                this.resetForm();
+                this.closeIFrame();
+            },
+
+            //关闭所有对话框
+            closeIFrame() {
+                this.dialogFormVisible_upload = false;
+                this.dialogFormVisible_check = false;
+            },
+
+            //弹出"新建"窗口
+            openUploadFrame() {
+                this.contributor = this.username;
+                this.dialogFormVisible_upload = true;
+                this.resetForm();
+            },
+            InitUserInfo() {
+                axios.get("/infos/getMyInfo").then((res)=>{
+                    this.onlineUser = res.data;
+                    this.username = res.data.username
+                    axios.get("/infos/onlineStatus").then((res)=>{
+                        if(res.data === 1) { //如果在线状态为1, 那就弹出欢迎框
+                            this.$message.success('欢迎回来~' + this.onlineUser.username);
+                        }
+                    });
+                });
+            },
+
+            //确认添加
+            confirmUpload() {
+                if (this.beforeUpload(this.file)) {
+                    let fd = new FormData();
+                    fd.append('file', this.file);
+                    fd.append('contributor', this.formData.contributor)
+                    fd.append('remarks', this.formData.remarks)
+                    axios.post("/index/toUpload", fd, {'Content-Type': 'multipart/form-data'}).then((res) => {
+                        if (res.data) {
+                            this.$message.success("文件上传成功!");
+                            this.closeIFrame();
+                        } else {
+                            this.$message.error("文件上传失败!");
+                        }
+                    }).catch((e) => {
+                        window.alert(e)
+                    }).finally(() => {
+                        this.getAllFile();
+                    })
+                }
+            },
+
+            beforeUpload(file) {
+                if (file.type !== "" || file.type != null || file.type !== undefined) {
+                    const isLt5M = file.size / 1024 / 1024 < 50; //这里做文件大小限制
+                    if (isLt5M) {//如果小于50M
+                        return true;
+                    } else {
+                        this.$message.error('上传文件大小不能超过 50MB!');
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            },
+            chooseFile(item) {
+                this.$message.success("已选择" + item.file.name)
+                this.file = item.file
+            },
+
+            //弹出“编辑”窗口
+            openCheckFrame(row) {
+                // row.id为该行记录在原数据库表中的id
+                axios.get("/index/getFileById/" + row.fileId).then((res) => {
+                    this.dialogFormVisible_check = true;
+                    this.formData = res.data;
+                }).finally(() => {
+                    this.getAllFile();//重新加载数据
+                });
+            },
+
+            searchFile() {
+                if (this.search.type === "") {
+                    this.$message.error("请选择搜索类型");
+                }
+                if (this.search.content === "") {
+                    this.$message.error("请输入搜索关键字");
+                }
+                axios.get("/index/searchFile/" + this.pagination.currentPage + "/" + this.pagination.pageSize + "/" + this.search.type + "/" + this.search.content).then((res) => {
+                    this.pagination.currentPage = res.data.current;
+                    this.pagination.total = res.data.total;
+                    this.dataList = res.data.records;
+                })
+            },
+
+            //下载文件
+            downloadFile(row) {
+                let a = document.createElement('a')
+                a.href = "http://localhost:8080/index/toDownload/" + row.fileName + "/" + row.fileId;
+                a.click();
+            }
+        }
+    })
+</script>
+</html>

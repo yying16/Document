@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>用户-借阅书目</title>
+
+</head>
+<body>
+<link rel="stylesheet" href="../css/mainpage.css">
+<div id="app">
+
+    <el-header style="text-align: left; font-size: 12px">
+
+        <span id="ha">图书馆管理系统</span>
+        <span id="en">library management system</span>
+
+        <div id="aa"><!--OK-->
+            <el-dropdown>
+                <span>设置</span>
+                <i class="el-icon-setting" style="margin-right: 15px"></i>
+                <el-dropdown-menu slot="dropdown">
+                    <el-dropdown-item @click.native="dialogVisible4Info = true">我的信息</el-dropdown-item>
+                    <el-dropdown-item @click.native="dialogVisible4Psw = true">修改密码</el-dropdown-item>
+                </el-dropdown-menu>
+
+                <!--我的信息对应的对话框--> <!--OK-->
+                <el-dialog title="我的信息" :visible.sync="dialogVisible4Info">
+                    <el-table :data="UserInfoData">
+                        <el-table-column prop="account" label="账号"></el-table-column>
+                        <el-table-column prop="username" label="用户名"></el-table-column>
+                        <el-table-column prop="telephone" label="电话"></el-table-column>
+                        <el-table-column prop="email" label="邮箱"></el-table-column>
+                    </el-table>
+                    <el-button @click="dialogVisible4Info = false">取 消</el-button>
+                    <el-button type="primary" @click="dialogVisible4Info = false">确 定</el-button>
+                </el-dialog>
+
+
+                <!--修改密码对应的对话框--> <!--OK-->
+                <el-dialog
+                        title="修改密码"
+                        :visible.sync="dialogVisible4Psw"
+                        width="30%">
+
+                    <!--对话框中的表单(修改密码)-->
+                    <el-form ref="FormEditPsw" :model="PswDataForm" label-width="150px">
+                        <el-form-item label="请输入原密码:">
+                            <el-input id="oldPsw" placeholder="请输入原密码" v-model="PswDataForm.oldPsw"
+                                      show-password></el-input>
+                            <br>
+                            <span id="password_err" class="err_msg" style="display: none">原密码错误，请再次输入</span>
+                        </el-form-item>
+                        <el-form-item label="请输入新密码:">
+                            <el-input id="newPsw" placeholder="请输入新密码" v-model="PswDataForm.newPsw"
+                                      show-password></el-input>
+                            <br>
+                            <span id="password_err1" class="err_msg" style="display: none">新密码格式错误(至少六位)</span>
+                        </el-form-item>
+                        <el-form-item label="重新输入新密码:">
+                            <el-input id="newPsw1" placeholder="再次输入新密码" v-model="PswDataForm.newPsw1"
+                                      show-password></el-input>
+                            <br>
+                            <span id="password_err3" class="err_msg" style="display: none">密码不一样，请再次输入</span>
+                        </el-form-item>
+
+                        <el-form-item>
+                            <el-button type="primary" @click="getChangePassword" dialogVisible4Psw=false>确认</el-button>
+                            <el-button @click="dialogVisible4Psw = false">取消</el-button>
+                        </el-form-item>
+                    </el-form>
+                </el-dialog>
+
+
+                <!--退出链接href-->
+                <a class="a1" href="http://localhost:8080/logout">退出</a>
+            </el-dropdown>
+        </div>
+
+    </el-header>
+
+    <!--功能栏-->
+    <el-container style="height: 695px">
+        <el-aside width="250px" style="background-color: #545c64">
+            <el-menu
+                    default-active="1"
+                    class="el-menu-vertical-demo"
+                    @open="handleOpen"
+                    @close="handleClose"
+                    background-color="#545c64"
+                    text-color="#fff"
+                    active-text-color="#ffd04b"><br>
+                <span id="s">用户界面：</span>
+                <hr>
+
+                <el-menu-item index="1">
+                    <span class="menu_item" slot="title">借阅书目</span>
+                    <i class="el-icon-caret-right"></i>
+                </el-menu-item>
+                <el-menu-item index="2">
+                    <span class="menu_item" slot="title"><a class="content"
+                                                            href="http://localhost:8080/pages/user_ReturnBook.html">归还书目</a></span>
+                    <i class="el-icon-caret-right"></i>
+                </el-menu-item>
+                <el-menu-item index="3">
+                    <span class="menu_item" slot="title"><a class="content"
+                                                            href="http://localhost:8080/pages/user_BorrowRecord.html">借阅记录</a></span>
+                    <i class="el-icon-caret-right"></i>
+                </el-menu-item>
+
+            </el-menu>
+        </el-aside>
+
+        <el-container>
+
+
+            <el-main>
+
+                <!--搜索表单--> <!--OK-->
+                <el-form :inline="true" :model="formInLine" class="demo-form-inline">
+                    <el-form-item label="搜索类型">
+                        <el-select placeholder="搜索类型" v-model="formInLine.type">
+                            <el-option label="书名" value="bookName"></el-option>
+                            <el-option label="作者" value="author"></el-option>
+                            <el-option label="出版社" value="publisher"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-input placeholder="请输入内容" v-model="formInLine.content"></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="searchBooks">查询</el-button>
+                    </el-form-item>
+
+                    <!--是否过滤库存-->
+                    <template>
+                        <el-checkbox id="checkbox" v-model="checked">过滤暂无库存</el-checkbox>
+                    </template>
+                </el-form>
+
+                <!--表格--> <!--OK-->
+                </el-table>
+                </template>
+
+                <el-table :data="books" style="width: 100%">
+                    <el-table-column prop="bookName" label="书名" align="center">
+                    </el-table-column>
+                    <el-table-column prop="isbn" label="ISBN" align="center">
+                    </el-table-column>
+                    <el-table-column prop="author" label="作者" align="center">
+                    </el-table-column>
+                    <el-table-column prop="publisher" label="出版社" align="center">
+                    </el-table-column>
+                    <el-table-column prop="edition" label="版次" align="center">
+                    </el-table-column>
+                    <el-table-column prop="price" label="单价" align="center">
+                    </el-table-column>
+                    <el-table-column prop="total" label="藏书总数" align="center">
+                    </el-table-column>
+                    <el-table-column prop="remain" label="馆内剩余" align="center">
+                    </el-table-column>
+                    <el-table-column prop="place" label="存放位置" align="center">
+                    </el-table-column>
+                    <el-table-column label="操作" align="center">
+                        <template slot-scope="scope">
+                            <el-button type="primary" size="mini" @click="handleBorrow(scope.row)">借阅</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <!--分页工具条--> <!--NOT OK-->
+                <el-pagination
+                        @size-change="handleSizeChange"
+                        @current-change="handleCurrentChange"
+                        :current-page="pagination.currentPage"
+                        :page-sizes="[5, 10, 15, 20]"
+                        :page-size="5"
+                        layout="total, sizes, prev, pager, next, jumper"
+                        :total="pagination.total">
+                </el-pagination>
+            </el-main>
+        </el-container>
+    </el-container>
+
+</div>
+
+
+<script src="../js/vue.js"></script>
+<script src="../js/index.js"></script>
+<script type="text/javascript" src="../js/jquery.min.js"></script>
+<script src="../js/axios-0.18.0.js"></script>
+<link rel="stylesheet" href="../plugins/elementui/index.css">
+<script>
+    var vue = new Vue({
+        el: "#app",
+        data: {
+            // 表格信息
+            books: [],
+            //修改密码对应的对话框是否展开的标记
+            dialogVisible4Psw: false,
+            //我的信息对应的对话框是否展开的标记
+            dialogVisible4Info: false,
+            //是否过滤暂无库存
+            checked: false,
+
+            bookFormData: {},
+
+            //用户个人信息(不展示密码和身份权限)
+            UserInfoData: [],
+            //密码表单
+            PswDataForm: {
+                oldPsw: '',
+                newPsw: '',
+                newPsw1: ''
+            },
+
+            //multipleSelection数组,存放复选框勾中的数据
+            multipleSelection: [],
+
+            //查询表单数据
+            formInLine: {
+                type: '',
+                content: ''
+            },
+
+            // 当前页码
+            pagination: {
+                currentPage: 1,
+                pageSize: 5,
+                total: 0
+            }
+        },
+
+        //钩子函数，VUE对象初始化完成后自动执行
+        created() {
+            this.getAll();
+            this.InitUserInfo();
+        },
+
+        methods: {
+            //普通用户信息初始化 /*OK*/
+            InitUserInfo() {
+                axios.get("/infos/getMyInfo").then((res) => {
+                    this.UserInfoData = res.data;
+                    //获取用户在线状态
+                    axios.get("/infos/onlineStatus").then((res) => {
+                        if (res.data === 1) { //如果在线状态为1, 那就弹出欢迎框
+                            this.$message.success('欢迎回来~' + this.UserInfoData[0].username);
+                        }
+                        //console.log(res.data); //test code
+                    });
+                });
+            },
+            //获得原密码和修改后的密码 /*OK*/
+            getChangePassword() {
+
+                var oldPsw = this.PswDataForm.oldPsw; //旧密码
+                var newPsw = this.PswDataForm.newPsw; //新密码
+                var newPsw1 = this.PswDataForm.newPsw1; //确认新密码
+
+                if (oldPsw !== this.UserInfoData[0].password) {
+                    this.$message.error("您输入的原密码不正确,请在此输入! (-_-||)");
+                } else if (newPsw !== newPsw1) {
+                    this.$message.error("两次新密码输入内容不一致,请在此输入! (-_-||)");
+                } else {
+                    //弹出警告框,让普通用户进行二次确认
+                    this.$confirm('确认更改您的密码?', 'Tips', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+                        axios.get("/infos/cp/" + newPsw).then((res) => {
+                            this.dialogVisible4Psw = false;
+                        }).finally(() => {
+                            //弹出确认框
+                            this.$confirm("更改密码成功,请重新登录~ (^_^)", "Tips", {
+                                confirmButtonText: '确定',
+                                cancelButtonText: '取消',
+                                type: 'success'
+                                /*无论是取消还是确定,点击后都是退出*/
+                            }).then(() => {
+                                window.location.href = 'http://localhost:8080/logout';//退出操作
+                            }).catch(() => {
+                                window.location.href = 'http://localhost:8080/logout';//退出操作
+                            });
+                        });
+
+                    }).catch(() => {
+                        this.$message.info("已取消操作");
+                        this.dialogVisible4Psw = false;
+                    })
+                }
+            },
+
+            // 功能栏打开方法
+            handleOpen(key, keyPath) {
+                console.log(key, keyPath);
+            },
+            // 功能栏关闭方法
+            handleClose(key, keyPath) {
+                console.log(key, keyPath);
+            },
+            <!--表单查询按钮--> /*OK*/
+            searchBooks() {
+
+                //调用条件查询
+                var type = this.formInLine.type;
+                var content = this.formInLine.content;
+
+                if (type !== '' && content !== '') {
+                    if (this.checked === false) { //不过滤暂无库存
+                        axios.get("/books4user/ByCondition4Book/n/" + this.pagination.currentPage + "/" +
+                            this.pagination.pageSize+"/" + type + "/" + content).then((res) => {
+                            this.pagination.currentPage = res.data.current;
+                            this.pagination.pageSize = res.data.size;
+                            this.pagination.total = res.data.total;
+                            this.books = res.data.records
+                        });
+                    } else { //过滤暂无库存
+                        axios.get("/books4user/ByCondition4Book/y/" + this.pagination.currentPage + "/" +
+                            this.pagination.pageSize+"/" + type + "/" + content).then((res) => {
+                            this.pagination.currentPage = res.data.current;
+                            this.pagination.pageSize = res.data.size;
+                            this.pagination.total = res.data.total;
+                            this.books = res.data.records
+                        });
+                    }
+                } else {
+                    //两个框的内容,只要有一个没填,就默认为查询全部
+                    this.getAll();
+                }
+            },
+
+            //获取所有数据 /*OK*/
+            getAll() {
+                var param = this.formInLine.type;
+                if (this.checked === false) {
+                    axios.get("/books4user/n/" + this.pagination.currentPage + "/" +
+                        this.pagination.pageSize).then((res) => {
+                        //console.log(res.data);
+                        this.pagination.currentPage = res.data.current;
+                        this.pagination.pageSize = res.data.size;
+                        this.pagination.total = res.data.total;
+                        this.books = res.data.records
+                    });
+                } else {
+                    axios.get("/books4user/y/" + this.pagination.currentPage + "/" +
+                        this.pagination.pageSize + "/" + param).then((res) => {
+                        this.pagination.currentPage = res.data.current;
+                        this.pagination.pageSize = res.data.size;
+                        this.pagination.total = res.data.total;
+                        this.books = res.data.records
+                    });
+                }
+            },
+
+
+            <!--分页-->
+            handleSizeChange(val) { //切换当前页显示条数
+                this.pagination.pageSize = val;
+            },
+            handleCurrentChange(val) { //切换页码值
+                this.pagination.currentPage = val;
+                this.getAll();
+            },
+
+
+            //重置 /*OK*/
+            resetForm() {
+                this.bookFormData = {};
+            },
+
+            //处理借阅 /*OK*/
+            handleBorrow(row) {
+                this.resetForm();
+
+                //让普通用户确认是否借阅
+                this.$confirm('确认借阅这本书?', 'Tips', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    //获取这本书的资料
+                    this.bookFormData = row;
+                    var remain = this.bookFormData.remain;
+
+                    //先查询该用户有没有借阅过此书,如果借过就不能再借阅(以后再实现)
+
+                    if (remain > 0) {
+                        axios.put("/books4user/checkRecord", this.bookFormData).then((res) => {
+                            if (res.data) {
+                                axios.put("/books4user/borrowBook", this.bookFormData).then((res) => {
+                                    this.$message.success("借阅成功");
+                                }).finally(() => {
+                                    this.searchBooks();//刷新界面
+                                });
+                            } else {
+                                this.$message.error("您已借阅此书且尚未归还");
+                            }
+                        })
+                    } else this.$message.error("此书暂无库存...");
+                }).catch(() => {
+                    this.$message.info("已取消借阅");
+                })
+            },
+
+        }
+    })
+
+</script>
+</body>
+</html>
